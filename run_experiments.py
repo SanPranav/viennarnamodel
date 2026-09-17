@@ -31,25 +31,31 @@ def evaluate_cha(config):
     md = RNA.md()
     md.temperature = float(exp["celsius"])
 
+    # Ensure RNA sequence conventions (replace T with U)
+    h1_seq = hp["H1_sequence"].replace("T", "U")
+    h2_seq = hp["H2_sequence"].replace("T", "U")
+    target_seq = hp["target_sequence"].replace("T", "U")
+    scrambled_seq = hp["scrambled_target_sequence"].replace("T", "U")
+
     # Individual Hairpin MFEs
-    h1_fc = RNA.fold_compound(hp["H1_sequence"], md)
+    h1_fc = RNA.fold_compound(h1_seq, md)
     _, h1_mfe = h1_fc.mfe()
     
-    h2_fc = RNA.fold_compound(hp["H2_sequence"], md)
+    h2_fc = RNA.fold_compound(h2_seq, md)
     _, h2_mfe = h2_fc.mfe()
 
     # Leak State (H1 + H2)
-    leak_seq = f"{hp['H1_sequence']}&{hp['H2_sequence']}"
+    leak_seq = f"{h1_seq}&{h2_seq}"
     leak_fc = RNA.fold_compound(leak_seq, md)
     _, leak_mfe = leak_fc.mfe()
 
     # Triggered State (Target + H1 + H2)
-    trig_seq = f"{hp['target_sequence']}&{hp['H1_sequence']}&{hp['H2_sequence']}"
+    trig_seq = f"{target_seq}&{h1_seq}&{h2_seq}"
     trig_fc = RNA.fold_compound(trig_seq, md)
     _, trig_mfe = trig_fc.mfe()
 
     # Scrambled Control (Scrambled + H1 + H2)
-    spec_seq = f"{hp['scrambled_target_sequence']}&{hp['H1_sequence']}&{hp['H2_sequence']}"
+    spec_seq = f"{scrambled_seq}&{h1_seq}&{h2_seq}"
     spec_fc = RNA.fold_compound(spec_seq, md)
     _, spec_mfe = spec_fc.mfe()
 
@@ -63,25 +69,27 @@ def evaluate_cha(config):
 
 def evaluate_candidates(config):
     screen_cfg = config.get("candidate_screening", {})
+    exp = config["experimental_conditions"]
     
+    md = RNA.md()
+    md.temperature = float(exp["celsius"])
+
     # Check if we are running a single selected_strand or a list of candidates
     if "selected_strand" in screen_cfg:
         cand = screen_cfg["selected_strand"]
-        candidates = [cand]  # Wrap single strand in a list so the loop still works
+        candidates = [cand]
     elif "candidates" in screen_cfg:
         candidates = screen_cfg["candidates"]
     else:
         print("Error: No 'selected_strand' or 'candidates' key found in config.json")
         return
 
-    target_rna = config["hairpin_system"]["target_sequence"].replace("T", "U")
-
     for cand in candidates:
         cand_seq = cand["sequence"].replace("T", "U")
         cand_idx = cand.get("index", "N/A")
         
-        # Calculate folding energy
-        fc = RNA.fold_compound(cand_seq)
+        # Calculate folding energy using configured model details
+        fc = RNA.fold_compound(cand_seq, md)
         _, mfe = fc.mfe()
         
         print(f"Candidate {cand_idx} ({cand_seq}): Self-MFE = {mfe:.2f} kcal/mol")
