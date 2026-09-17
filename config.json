@@ -1,23 +1,21 @@
 {
   "experimental_conditions": {
     "celsius": 37.0,
-    "concentration_H1_M": 1e-7,
-    "concentration_H2_M": 1e-7,
-    "concentration_target_M": 1e-7
+    "concentration_H1_M": 1e-07,
+    "concentration_H2_M": 1e-07,
+    "concentration_target_M": 1e-07
   },
   "hairpin_system": {
-    "H1_sequence": "GGGGCUACCUGGUAGCCCUUGUCGCCAUGUCUUGCGACAUCUACCAACAGCGAGACAACAGAGAGACGGUCGGGUCCACAGUUUCCGGAAACUGUGU",
-    "H2_sequence": "CGAGUAGAGUGUGGGCUCUCUGUUGUCUCGAGAUGUCGCAAGACAUGGCGACAUCUACCAACAGCCAUGUCUUGACAAGGGCUACCAGGUAGCCCC",
-    "target_sequence": "AAGGGCTACCAGGTAGCCCC",
-    "scrambled_target_sequence": "CGUCAGGACAGCUUAGACGA"
+    "H1_sequence": "AAAGCUACCAGGUAGCCCCAGCCGCCAUGUCUUGCGGCUGGGGCUACCUGCGAGACAACAGAGAGACGGUCGGGUCCACAGUUUCCAAAAAAAAAAGGAAACUGUGU",
+    "H2_sequence": "CGAGUAGAGUGUGGGCUCUCUGUUGUCUCGAGAUGUCGCAAGACAUGGCGGCUGGGGCUACCUGCCAUGUCUUGAAAAAAAGACAUCUACCAACAGUAUCGCUC",
+    "target_sequence": "GCUACCAGGUAGCCCCAGC",
+    "scrambled_target_sequence": "CACCGUACCGACGCUGCUA"
   },
   "candidate_screening": {
-    "full_target_mrna": "AGCUAGCUAGUACGUAGCUAGCUAGUGAUCGAUCAUGCAUGCUAGCUAGC",
-    "candidates": [
-      {"index": 108, "seq": "GGGCTACCAGGTAGCCCCAGCCG"},
-      {"index": 109, "seq": "GGCTACCAGGTAGCCCCAGCCGA"},
-      {"index": 114, "seq": "CCAGGTAGCCCCAGCCGAACTGG"},
-      {"index": 107, "seq": "AGGGCTACCAGGTAGCCCCAGCC"}
-    ]
+    "selected_strand": {
+      "index": 28,
+      "sequence": "GCUACCAGGUAGCCCCAGC",
+      "length": 19
+    }
   }
 }

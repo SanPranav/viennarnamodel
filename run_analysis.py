@@ -89,18 +89,21 @@ print(f"Structure           : {struct_spec}\n")
 # PART B: VIENNARNA CANDIDATE SCREENING
 # ------------------------------------------------------------------------------
 print("=== PART B: Candidate Screening ===")
-target_rna = screen_cfg["full_target_mrna"].replace("T", "U")
 
-print(f"{'Index':<6} | {'Self-MFE (kcal/mol)':<20} | {'Duplex ΔG (kcal/mol)':<22}")
-print("-" * 55)
+selected = screen_cfg.get("selected_strand", {})
+strand_idx = selected.get("index", "N/A")
+cand_seq = selected.get("sequence", seq_target).replace("T", "U")
 
-for cand in screen_cfg["candidates"]:
-    cand_rna = cand["seq"].replace("T", "U")
-    fc_cand = RNA.fold_compound(cand_rna)
-    _, cand_mfe = fc_cand.mfe()
+fc_cand = RNA.fold_compound(cand_seq)
+_, cand_mfe = fc_cand.mfe()
 
-    duplex = RNA.duplexfold(cand_rna, target_rna)
-    print(f"{cand['index']:<6} | {cand_mfe:<20.2f} | {duplex.energy:<22.2f}")
+# Calculate duplex energy between the target and H1 toehold/strand
+duplex = RNA.duplexfold(cand_seq, seq_h1)
+
+print(f"Selected Strand Index : {strand_idx}")
+print(f"Strand Sequence       : {cand_seq}")
+print(f"Strand Self-MFE       : {cand_mfe:.2f} kcal/mol")
+print(f"Duplex ΔG with H1     : {duplex.energy:.2f} kcal/mol")
 
 print("\n==================================================================")
 print("                     ANALYSIS COMPLETE                            ")

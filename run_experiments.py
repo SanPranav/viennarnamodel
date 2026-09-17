@@ -62,20 +62,29 @@ def evaluate_cha(config):
     print(f"Target ΔΔG (Drive)      : {trig_mfe - leak_mfe:.2f} kcal/mol\n")
 
 def evaluate_candidates(config):
-    candidates = config["candidate_screening"]["candidates"]
-    md = RNA.md()
-    md.temperature = float(config["experimental_conditions"]["celsius"])
+    screen_cfg = config.get("candidate_screening", {})
+    
+    # Check if we are running a single selected_strand or a list of candidates
+    if "selected_strand" in screen_cfg:
+        cand = screen_cfg["selected_strand"]
+        candidates = [cand]  # Wrap single strand in a list so the loop still works
+    elif "candidates" in screen_cfg:
+        candidates = screen_cfg["candidates"]
+    else:
+        print("Error: No 'selected_strand' or 'candidates' key found in config.json")
+        return
 
-    print("--- CANDIDATE SCREENING RESULTS ---")
-    print(f"{'Index':<8} | {'Seq Length':<10} | {'MFE (kcal/mol)':<16} | {'Wallace Tm (°C)':<15}")
-    print("-" * 60)
+    target_rna = config["hairpin_system"]["target_sequence"].replace("T", "U")
 
     for cand in candidates:
-        seq = cand["seq"]
-        fc = RNA.fold_compound(seq, md)
+        cand_seq = cand["sequence"].replace("T", "U")
+        cand_idx = cand.get("index", "N/A")
+        
+        # Calculate folding energy
+        fc = RNA.fold_compound(cand_seq)
         _, mfe = fc.mfe()
-        tm = wallace_tm(seq)
-        print(f"{cand['index']:<8} | {len(seq):<10} | {mfe:<16.2f} | {tm:<15}")
+        
+        print(f"Candidate {cand_idx} ({cand_seq}): Self-MFE = {mfe:.2f} kcal/mol")
 
 if __name__ == "__main__":
     cfg = load_config("config.json")
