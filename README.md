@@ -66,7 +66,7 @@ python3 run_analysis.py
 ```
 3. **Interpret Results**
 ```bash
-pyhton3 interpret_results.py
+python3 interpret_results.py
 ```
 
 ---
