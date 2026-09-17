@@ -3,13 +3,13 @@
     "celsius": 37.0,
     "concentration_H1_M": 1e-07,
     "concentration_H2_M": 5e-08,
-    "concentration_target_M": 1e-07
+    "concentration_target_M": 2.5e-08
   },
   "hairpin_system": {
     "H1_sequence": "GCUACCAGGUAGCCCCAGCCGCCACGUCUUGCGGCUGGGGCUACCUGCGAGACAACAGAGAGACGGUCGGGUCCACAGUUUCCGGAAACUGUGU",
     "H2_sequence": "CGAGUAGAGUGUGGGCUCUCUGUUGUCUCGAGAUGUCGCAAGACGUGGCGGCUGGGGCUACCUGCCAUGUCUUGGACAUCUACCAACAGUAUCGCUC",
     "target_sequence": "GCUACCAGGUAGCCCCAGC",
-    "scrambled_target_sequence": "CACCGUACCGACGCUGCUA"
+    "scrambled_target_sequence": "UUUUUUUUUUUUUUUUUUU"
   },
   "candidate_screening": {
     "selected_strand": {

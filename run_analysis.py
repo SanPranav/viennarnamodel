@@ -98,13 +98,15 @@ cand_seq = selected.get("sequence", seq_target).replace("T", "U")
 fc_cand = RNA.fold_compound(cand_seq, md)
 _, cand_mfe = fc_cand.mfe()
 
-# Calculate duplex energy using model details
-duplex = RNA.duplexfold(cand_seq, seq_h1, md)
+# Calculate duplex energy using fold_compound to preserve temperature settings
+duplex_seq = f"{cand_seq}&{seq_h1}"
+fc_duplex = RNA.fold_compound(duplex_seq, md)
+_, duplex_mfe = fc_duplex.mfe()
 
 print(f"Selected Strand Index : {strand_idx}")
 print(f"Strand Sequence       : {cand_seq}")
 print(f"Strand Self-MFE       : {cand_mfe:.2f} kcal/mol")
-print(f"Duplex ΔG with H1     : {duplex.energy:.2f} kcal/mol")
+print(f"Duplex ΔG with H1     : {duplex_mfe:.2f} kcal/mol")
 
 print("\n==================================================================")
 print("                    ANALYSIS COMPLETE                             ")
