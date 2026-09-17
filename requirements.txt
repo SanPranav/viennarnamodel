@@ -1,1 +1,2 @@
 ViennaRNA==2.7.2
+numpy
