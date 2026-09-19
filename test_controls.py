@@ -1,100 +1,74 @@
+import json
+import sys
 import RNA
-import numpy as np
-from scipy.integrate import solve_ivp
-import matplotlib.pyplot as plt
 
-# ------------------------------------------------------------------------------
-# 1. SEQUENCES & EXPERIMENTAL CONDITIONS (FROM CONFIG)
-# ------------------------------------------------------------------------------
-temp_celsius = 37.0
-H1_0 = 1e-07          # Molar
-H2_0 = 5e-08          # Molar
-Target_0 = 2.5e-08      # Molar
+# 1. LOAD CONFIGURATION
+try:
+    with open("config.json", "r") as f:
+        config = json.load(f)
+except FileNotFoundError:
+    print("Error: config.json not found!")
+    sys.exit(1)
 
-# Hairpins and Candidate 28 Target
-H1_seq = "GCUACCAGGUAGCCCCAGCCGCCACGUCUUGCGGCUGGGGCUACCUGCGAGACAACAGAGAGACGGUCGGGUCCACAGUUUCCGGAAACUGUGU"
-H2_seq = "CGAGUAGAGUGUGGGCUCUCUGUUGUCUCGAGAUGUCGCAAGACGUGGCGGCUGGGGCUACCUGCCAUGUCUUGGACAUCUACCAACAGUAUCGCUC"
+env_cfg = config["experimental_conditions"]
+hp_cfg = config["hairpin_system"]
 
-# Test Targets
-target_seq = "GCUACCAGGUAGCCCCAGC"                           # Candidate 28 Target
-intron_junction_seq = "ACAGGUAAGUAUCAAGGUUACAAG"                  # Exon1-Intron Pre-mRNA Junction (bp 2340)[cite: 1]
-scrambled_seq = "UUUUUUUUUUUUUUUUUUU"                         # Scrambled Control
+# Set experimental temperature
+RNA.cvar.temperature = env_cfg["celsius"]
 
-# Set ViennaRNA global temperature
-RNA.cvar.temperature = temp_celsius
+# Load clean RNA sequences (convert T to U if present)
+seq_h1 = hp_cfg["H1_sequence"].replace("T", "U")
+seq_h2 = hp_cfg["H2_sequence"].replace("T", "U")
+seq_target = hp_cfg["target_sequence"].replace("T", "U")
+seq_luc = hp_cfg["luc_target_sequence"].replace("T", "U")
+seq_scrambled = hp_cfg["scrambled_target_sequence"].replace("T", "U")
 
-# ------------------------------------------------------------------------------
-# 2. THERMODYNAMIC EVALUATION (ViennaRNA)
-# ------------------------------------------------------------------------------
-def evaluate_binding(target, hairpin):
-    duplex = f"{target}&{hairpin}"
-    fc = RNA.fold_compound(duplex)
-    _, mfe = fc.mfe()
-    return mfe
+print("==================================================================")
+print("             CHA CONTROLS VALIDATION (ViennaRNA v3)               ")
+print("==================================================================\n")
 
-dg_target = evaluate_binding(target_seq, H1_seq)
-dg_intron = evaluate_binding(intron_junction_seq, H1_seq)
-dg_scrambled = evaluate_binding(scrambled_seq, H1_seq)
+# --- CONTROL 1: Native Target Assembly ---
+complex_target = f"{seq_target}&{seq_h1}&{seq_h2}"
+fc_target = RNA.fold_compound(complex_target)
+struct_target, mfe_target = fc_target.mfe()
 
-print(f"=== THERMODYNAMIC BINDING ENERGIES (ΔG at {temp_celsius}°C) ===")
-print(f"Target Binding ΔG           : {dg_target:.2f} kcal/mol")
-print(f"Intron Junction Binding ΔG  : {dg_intron:.2f} kcal/mol")
-print(f"Scrambled Control Binding ΔG: {dg_scrambled:.2f} kcal/mol\n")
+# --- CONTROL 2: Luc Target Assembly ---
+complex_luc = f"{seq_luc}&{seq_h1}&{seq_h2}"
+fc_luc = RNA.fold_compound(complex_luc)
+struct_luc, mfe_luc = fc_luc.mfe()
 
-# ------------------------------------------------------------------------------
-# 3. KINETIC SIMULATION COMPARISON
-# ------------------------------------------------------------------------------
-# Kinetic rates based on duplex stability relative to target
-k1_target = 1e5    # Target bimolecular rate (M^-1 s^-1)
-k1_intron = 1e2    # Off-target pre-mRNA binding rate
-k1_scram = 10      # Scrambled non-specific rate
-k1_r = 0.1         # Unbinding rate (s^-1)
-k2 = 1e5           # H2 displacement rate (M^-1 s^-1)
-k_leak = 10        # Spontaneous leakage rate (M^-1 s^-1)
+# --- CONTROL 3: Scrambled Target (Off-Target) ---
+complex_scram = f"{seq_scrambled}&{seq_h1}&{seq_h2}"
+fc_scram = RNA.fold_compound(complex_scram)
+struct_scram, mfe_scram = fc_scram.mfe()
 
-def simulate_cha(k1_rate, t_span=(0, 7200)):
-    def cha_system(t, y):
-        T, H1, H2, H1T, C3, Leak = [max(0.0, val) for val in y]
-        dT = -k1_rate * T * H1 + k1_r * H1T + k2 * H1T * H2
-        dH1 = -k1_rate * T * H1 + k1_r * H1T - k_leak * H1 * H2
-        dH2 = -k2 * H1T * H2 - k_leak * H1 * H2
-        dH1T = k1_rate * T * H1 - k1_r * H1T - k2 * H1T * H2
-        dC3 = k2 * H1T * H2
-        dLeak = k_leak * H1 * H2
-        return [dT, dH1, dH2, dH1T, dC3, dLeak]
+# --- CONTROL 4: Un-triggered Leak Baseline ---
+complex_leak = f"{seq_h1}&{seq_h2}"
+fc_leak = RNA.fold_compound(complex_leak)
+struct_leak, mfe_leak = fc_leak.mfe()
 
-    y0 = [Target_0, H1_0, H2_0, 0, 0, 0]
-    t_eval = np.linspace(t_span[0], t_span[1], 500)
-    sol = solve_ivp(cha_system, t_span, y0, t_eval=t_eval, method='Radau')
-    
-    signal = sol.y[4] * 1e9  # nM
-    leak = sol.y[5] * 1e9    # nM
-    return sol.t / 60, signal, leak
+# Calculate Net Driving Energies
+ddG_target = mfe_target - mfe_leak
+ddG_luc = mfe_luc - mfe_leak
+ddG_scram = mfe_scram - mfe_leak
 
-t_min, sig_target, leak_bg = simulate_cha(k1_target)
-_, sig_intron, _ = simulate_cha(k1_intron)
-_, sig_scram, _ = simulate_cha(k1_scram)
+print(f"{'Control Condition':<25} | {'3-Strand MFE (kcal/mol)':<23} | {'ΔΔG vs Leak (kcal/mol)':<22}")
+print("-" * 75)
+print(f"{'Native D2 Target':<25} | {mfe_target:<23.2f} | {ddG_target:<22.2f}")
+print(f"{'Luciferase (Luc) Target':<25} | {mfe_luc:<23.2f} | {ddG_luc:<22.2f}")
+print(f"{'Scrambled Target (Control)':<25} | {mfe_scram:<23.2f} | {ddG_scram:<22.2f}")
+print(f"{'H1 + H2 (Leak Baseline)':<25} | {mfe_leak:<23.2f} | {'0.00 (Baseline)':<22}")
+print("-" * 75)
 
-# ------------------------------------------------------------------------------
-# 4. PLOTTING & OUTPUT
-# ------------------------------------------------------------------------------
-plt.figure(figsize=(9, 5))
-plt.plot(t_min, sig_target, label="Candidate 28 Target", color="green", linewidth=2)
-plt.plot(t_min, sig_intron, label="Pre-mRNA Intron Junction", color="orange", linestyle="-.", linewidth=2)
-plt.plot(t_min, sig_scram, label="Scrambled (U19)", color="blue", linestyle=":", linewidth=2)
-plt.plot(t_min, leak_bg, label="Spontaneous Leak Baseline", color="red", linestyle="--", linewidth=1.5)
+print("\n=== VERIFICATION SUMMARY ===")
+if ddG_target < -10.0 and ddG_luc < -10.0:
+    print("✓ SUCCESS: Both Native D2 and Luc targets exhibit strong thermodynamic driving force.")
+else:
+    print("✗ WARNING: Target driving force is weak.")
 
-plt.xlabel("Time (minutes)")
-plt.ylabel("Active Complex Concentration (nM)")
-plt.title("CHA Kinetics: Candidate 28 vs. Junction Controls (37°C)")
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.savefig("junction_controls_kinetics.png")
+if mfe_scram > mfe_leak:
+    print("✓ SUCCESS: Scrambled control is disfavored relative to baseline (High Specificity).")
+else:
+    print("✗ WARNING: Off-target sequence triggered false-positive assembly.")
 
-print("=== KINETIC SIMULATION RESULTS (2 Hours) ===")
-print(f"Target Signal     : {sig_target[-1]:.2f} nM")
-print(f"Intron Signal     : {sig_intron[-1]:.2f} nM")
-print(f"Scrambled Signal  : {sig_scram[-1]:.2f} nM")
-print(f"Leak Baseline     : {leak_bg[-1]:.2f} nM")
-print("\nPlot saved as 'junction_controls_kinetics.png'.")
+print("\n==================================================================")
